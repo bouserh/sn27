@@ -1,0 +1,4 @@
+bittensor==6.4.0
+bittensor-cli==6.4.0
+torch==2.1.2
+transformers==4.41.1

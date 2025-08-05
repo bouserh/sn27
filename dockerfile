@@ -1,28 +1,31 @@
-# ---- Salad base -------------------------------------------------------
+# ---- Salad base (Ubuntu 22.04 + Python 3.11) --------------------------
 FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1
 
-# ---- add Python 3.10 (cp310 wheels available for torch 2.1.x) --------
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y python3.10 python3.10-venv && \
-    ln -sf /usr/bin/python3.10 /usr/local/bin/python
+# ---- OS tooling ------------------------------------------------------
+RUN apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        python3 python3-venv python3-pip git build-essential curl ca-certificates && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# ---- Python venv -----------------------------------------------------
 WORKDIR /miner
-RUN python -m venv venv
+RUN python3 -m venv venv
 
-# torch 2.1.2 CPU wheel (cp310) ----------------------------------------
+# 1 · Install a CPU wheel of torch >= 2.3,< 2.4 (cp311 wheel exists) ---
 RUN . venv/bin/activate && \
     pip install --no-cache-dir \
         --extra-index-url https://download.pytorch.org/whl/cpu \
-        torch==2.1.2
+        "torch>=2.3,<2.4"
 
-# remaining deps --------------------------------------------------------
+# 2 · Install remaining deps -------------------------------------------
 COPY requirements.txt .
 RUN . venv/bin/activate && \
     pip install --no-cache-dir -r requirements.txt
 
-# clone Subnet-27 neuron -----------------------------------------------
+# 3 · Clone Subnet-27 neuron ------------------------------------------
 RUN git clone --depth 1 https://github.com/neuralinternet/neurons.git /miner/neurons
 
+# ---- Entrypoint ------------------------------------------------------
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENV PATH="/miner/venv/bin:$PATH"

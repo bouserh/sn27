@@ -1,5 +1,4 @@
 # ---- Base image (Salad) ----------------------------------------------
-# Use the explicit tag “0.1” — there is no :latest
 FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1
 
 # ---- OS tooling ------------------------------------------------------
@@ -13,6 +12,7 @@ WORKDIR /miner
 COPY requirements.txt .
 RUN python3 -m venv venv && \
     . venv/bin/activate && \
+    PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu \
     pip install --no-cache-dir -r requirements.txt
 
 # ---- Clone Subnet-27 neuron -----------------------------------------

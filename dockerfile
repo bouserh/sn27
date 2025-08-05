@@ -1,5 +1,6 @@
-# ---- Base image guaranteed to work on Salad --------------------------
-FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:latest
+# ---- Base image (Salad) ----------------------------------------------
+# Use the explicit tag “0.1” — there is no :latest
+FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1
 
 # ---- OS tooling ------------------------------------------------------
 RUN apt-get update -qq && \

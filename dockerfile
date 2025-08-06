@@ -1,7 +1,10 @@
 ###############################################################################
-# Base image: CUDA 12 runtime on Ubuntu 22.04
+# OPTION 1: Use your original working base image (RECOMMENDED)
 ###############################################################################
-FROM nvidia/cuda:12.2-runtime-ubuntu22.04
+FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1
+
+## Alternative Option 2: Use official NVIDIA CUDA image (uncomment to use)
+## FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
 
 ###############################################################################
 # 1 · System dependencies and tools

@@ -16,18 +16,18 @@ WORKDIR /miner
 RUN python3 -m venv venv
 
 # ────────────────────────────────────────────────────────────────────────────
-# 3 · Python deps (torch first, then BT + neuron + compute)
+# 3 · Python packages
 # ────────────────────────────────────────────────────────────────────────────
 RUN . venv/bin/activate && \
-    # torch CPU wheel (runtime picks up host GPUs)
+    # Torch CPU wheel (GPU picked up at runtime)
     pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu \
         "torch>=2.3,<2.4" && \
-    # bittensor core
+    # Bittensor core
     pip install --no-cache-dir bittensor==9.8.* && \
-    # SN-27 neuron & compute backend straight from GitHub
+    # SN-27 neuron & compute backend via ZIP archives (no git clone)
     pip install --no-cache-dir \
-        git+https://github.com/neuralinternet/neurons.git@stable \
-        git+https://github.com/neuralinternet/compute.git@stable
+        "neurons @ https://github.com/neuralinternet/neurons/archive/refs/heads/stable.zip" \
+        "compute  @ https://github.com/neuralinternet/compute/archive/refs/heads/stable.zip"
 
 # ────────────────────────────────────────────────────────────────────────────
 # 4 · Entry-point

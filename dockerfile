@@ -38,14 +38,14 @@ RUN . venv/bin/activate && \
 ###############################################################################
 ARG NICOMPUTE_REF=main
 RUN git clone --depth 1 --branch ${NICOMPUTE_REF} \
-        https://github.com/neuralinternet/ni-compute.git /tmp/ni-compute && \
+        https://github.com/neuralinternet/nicompute.git /tmp/nicompute && \
     . venv/bin/activate && \
-    cd /tmp/ni-compute && \
+    cd /tmp/nicompute && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir --no-deps -r requirements-compute.txt && \
     pip install --no-cache-dir -e . && \
-    cp -r /tmp/ni-compute/* /app/ && \
-    rm -rf /tmp/ni-compute
+    cp -r /tmp/nicompute/* /app/ && \
+    rm -rf /tmp/nicompute
 
 ###############################################################################
 # 5 · Setup directories and permissions

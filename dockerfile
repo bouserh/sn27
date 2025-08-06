@@ -1,5 +1,5 @@
 ###############################################################################
-# Base image: CUDA 12 runtime + Ubuntu 22.04 (maintained by Salad)
+# Base image: CUDA 12 runtime on Ubuntu 22.04 (Salad official)
 ###############################################################################
 FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1
 
@@ -19,22 +19,23 @@ WORKDIR /miner
 RUN python3 -m venv venv
 
 ###############################################################################
-# 3 · Python deps  (torch ▸ bittensor ▸ SN27 + compute)
+# 3 · Python packages
+#    • torch  (CPU wheel; container sees host GPUs at runtime)
+#    • bittensor ≥ 9.8
+#    • sn27 miner  (project_name = sn27, subdir = neurons)
+#    • ni-compute (project_name = ni-compute, subdir = compute)
 ###############################################################################
 RUN . venv/bin/activate && \
-    # Torch CPU wheel (container picks up host GPUs at runtime)
     pip install --no-cache-dir \
         --extra-index-url https://download.pytorch.org/whl/cpu \
         "torch>=2.3,<2.4" && \
-    # Bittensor core
     pip install --no-cache-dir "bittensor>=9.8,<10" && \
-    # SN27 miner package (main branch ZIP)  +  compute sub-package
     pip install --no-cache-dir \
-        "SN27    @ https://github.com/neuralinternet/SN27/archive/refs/heads/main.zip" \
-        "compute @ https://github.com/neuralinternet/SN27/archive/refs/heads/main.zip#subdirectory=compute"
+        "sn27 @ git+https://github.com/neuralinternet/SN27.git@main#egg=sn27&subdirectory=neurons" \
+        "ni-compute @ git+https://github.com/neuralinternet/SN27.git@main#egg=ni-compute&subdirectory=compute"
 
 ###############################################################################
-# 4 · Prompt-free entry-point (make sure this file is in your repo)
+# 4 · Prompt-free entry-point (must exist in repo root)
 ###############################################################################
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

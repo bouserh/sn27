@@ -38,21 +38,28 @@ RUN git clone --depth 1 --branch ${NICOMPUTE_REF} \
         https://github.com/neuralinternet/nicompute.git /tmp/nicompute && \
     . venv/bin/activate && \
     cd /tmp/nicompute && \
+    echo "📁 Repository contents:" && \
     ls -la && \
-    echo "Installing main requirements..." && \
+    echo "🔍 Looking for setup files:" && \
+    find . -name "setup.py" -o -name "pyproject.toml" && \
+    echo "📦 Installing main requirements..." && \
     pip install --no-cache-dir -r requirements.txt && \
-    echo "Checking for requirements-compute.txt..." && \
+    echo "🔍 Checking for requirements-compute.txt..." && \
     if [ -f "requirements-compute.txt" ]; then \
-        echo "Found requirements-compute.txt, installing..." && \
+        echo "📦 Found requirements-compute.txt, installing..." && \
         pip install --no-cache-dir --no-deps -r requirements-compute.txt; \
     else \
-        echo "requirements-compute.txt not found, skipping..."; \
+        echo "⚠️  requirements-compute.txt not found, skipping..."; \
     fi && \
-    echo "Installing package in editable mode..." && \
+    echo "📦 Installing package in editable mode..." && \
     pip install --no-cache-dir -e . && \
-    echo "Copying files to /app..." && \
+    echo "🔍 Checking installed packages:" && \
+    pip list | grep -E "(compute|nicompute|bittensor)" && \
+    echo "📂 Copying files to /app..." && \
     cp -r /tmp/nicompute/* /app/ && \
-    rm -rf /tmp/nicompute
+    rm -rf /tmp/nicompute && \
+    echo "🔍 Final /app contents:" && \
+    cd /app && ls -la
 
 ###############################################################################
 # 5 · Setup directories and permissions

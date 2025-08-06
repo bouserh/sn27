@@ -1,10 +1,7 @@
 ###############################################################################
-# OPTION 1: Use your original working base image (RECOMMENDED)
+# Base image: CUDA 12 runtime on Ubuntu 22.04 (Salad official - proven working)
 ###############################################################################
 FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1
-
-## Alternative Option 2: Use official NVIDIA CUDA image (uncomment to use)
-## FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
 
 ###############################################################################
 # 1 · System dependencies and tools
@@ -34,16 +31,26 @@ RUN . venv/bin/activate && \
     pip install --no-cache-dir "bittensor>=9.8,<10"
 
 ###############################################################################
-# 4 · Clone and install NI Compute
+# 4 · Clone and install NI Compute with error handling
 ###############################################################################
 ARG NICOMPUTE_REF=main
 RUN git clone --depth 1 --branch ${NICOMPUTE_REF} \
         https://github.com/neuralinternet/nicompute.git /tmp/nicompute && \
     . venv/bin/activate && \
     cd /tmp/nicompute && \
+    ls -la && \
+    echo "Installing main requirements..." && \
     pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir --no-deps -r requirements-compute.txt && \
+    echo "Checking for requirements-compute.txt..." && \
+    if [ -f "requirements-compute.txt" ]; then \
+        echo "Found requirements-compute.txt, installing..." && \
+        pip install --no-cache-dir --no-deps -r requirements-compute.txt; \
+    else \
+        echo "requirements-compute.txt not found, skipping..."; \
+    fi && \
+    echo "Installing package in editable mode..." && \
     pip install --no-cache-dir -e . && \
+    echo "Copying files to /app..." && \
     cp -r /tmp/nicompute/* /app/ && \
     rm -rf /tmp/nicompute
 

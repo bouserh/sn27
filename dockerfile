@@ -13,16 +13,14 @@ RUN apt-get update -qq && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ###############################################################################
-# 2 · Python venv
+# 2 · Python virtual-env
 ###############################################################################
 WORKDIR /miner
 RUN python3 -m venv venv
 
 ###############################################################################
-# 3 · Python deps
+# 3 · Python deps  (torch ▸ bittensor ▸ SN27 + compute)
 ###############################################################################
-# Pin one tag → reproducible builds.  Change TAG when SN27 releases a new one.
-ARG SN27_TAG=v0.2.0   # ← check https://github.com/neuralinternet/SN27/releases
 RUN . venv/bin/activate && \
     # Torch CPU wheel (container picks up host GPUs at runtime)
     pip install --no-cache-dir \
@@ -30,15 +28,13 @@ RUN . venv/bin/activate && \
         "torch>=2.3,<2.4" && \
     # Bittensor core
     pip install --no-cache-dir "bittensor>=9.8,<10" && \
-    # 3a · install SN27 miner package
+    # SN27 miner package (main branch ZIP)  +  compute sub-package
     pip install --no-cache-dir \
-        "SN27 @ https://github.com/neuralinternet/SN27/archive/refs/tags/${SN27_TAG}.zip" && \
-    # 3b · install compute module from the *same* archive, subdirectory trick
-    pip install --no-cache-dir \
-        "compute @ https://github.com/neuralinternet/SN27/archive/refs/tags/${SN27_TAG}.zip#subdirectory=compute"
+        "SN27    @ https://github.com/neuralinternet/SN27/archive/refs/heads/main.zip" \
+        "compute @ https://github.com/neuralinternet/SN27/archive/refs/heads/main.zip#subdirectory=compute"
 
 ###############################################################################
-# 4 · Prompt-free entry-point (make sure this file is in your repo root)
+# 4 · Prompt-free entry-point (make sure this file is in your repo)
 ###############################################################################
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

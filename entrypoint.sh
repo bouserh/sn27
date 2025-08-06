@@ -2,26 +2,23 @@
 set -euo pipefail
 
 # ─── 1 · ENV defaults ───────────────────────────────────────────────────────
-: "${WALLET_NAME:=maincold}"      # cold wallet folder name
+: "${WALLET_NAME:=maincold}"      # cold wallet folder
 : "${HOTKEY:=miner01}"            # miner identity
 : "${BT_NETWORK:=finney}"         # main network
 : "${NETUID:=27}"                 # Subnet-27
-: "${MNEMONIC:=}"                 # 24-word coldkey seed (required first run)
-: "${HOTKEY_MNEMONIC:=}"          # optional hotkey seed (usually leave blank)
+: "${MNEMONIC:=}"                 # 24-word coldkey seed  (required 1st run)
+: "${HOTKEY_MNEMONIC:=}"          # optional hotkey seed
 
 WALLET_DIR="${HOME}/.bittensor/wallets"
-mkdir -p "$WALLET_DIR"            # avoids directory prompt
+mkdir -p "$WALLET_DIR"            # avoid directory prompt
 
-# activate venv
+# ─── 2 · Activate venv & cd ─────────────────────────────────────────────────
 source /miner/venv/bin/activate
 cd /miner/neurons
 
-# ─── 2 · Coldkey restore / create ───────────────────────────────────────────
+# ─── 3 · Coldkey restore / create ───────────────────────────────────────────
 if ! btcli wallet info --wallet.name "$WALLET_NAME" >/dev/null 2>&1; then
-  if [ -z "$MNEMONIC" ]; then
-    echo "[FATAL] MNEMONIC env var is required on first boot." >&2
-    exit 1
-  fi
+  [ -z "$MNEMONIC" ] && { echo "[FATAL] MNEMONIC env var missing"; exit 1; }
   btcli wallet regen-coldkey \
        --wallet.name  "$WALLET_NAME" \
        --wallet.path  "$WALLET_DIR" \
@@ -29,7 +26,7 @@ if ! btcli wallet info --wallet.name "$WALLET_NAME" >/dev/null 2>&1; then
        --no-use-password
 fi
 
-# ─── 3 · Hotkey ensure ──────────────────────────────────────────────────────
+# ─── 4 · Hotkey ensure ──────────────────────────────────────────────────────
 if ! btcli wallet info --wallet.name "$WALLET_NAME" \
         --wallet.hotkey "$HOTKEY" >/dev/null 2>&1; then
   if [ -n "$HOTKEY_MNEMONIC" ]; then
@@ -44,11 +41,12 @@ if ! btcli wallet info --wallet.name "$WALLET_NAME" \
          --wallet.name   "$WALLET_NAME" \
          --wallet.hotkey "$HOTKEY" \
          --wallet.path   "$WALLET_DIR" \
+         --n_words       12 \
          --no-use-password
   fi
 fi
 
-# ─── 4 · Register if not yet registered ─────────────────────────────────────
+# ─── 5 · Auto-register if not yet on subnet ────────────────────────────────
 if ! btcli subnets list --wallet.name "$WALLET_NAME" \
         --wallet.hotkey "$HOTKEY" | grep -q "netuid *$NETUID"; then
   btcli subnets register \
@@ -59,7 +57,7 @@ if ! btcli subnets list --wallet.name "$WALLET_NAME" \
        --no_prompt
 fi
 
-# ─── 5 · Launch miner ───────────────────────────────────────────────────────
+# ─── 6 · Launch miner ──────────────────────────────────────────────────────
 exec python neurons/miner.py \
        --netuid            "$NETUID" \
        --wallet.name       "$WALLET_NAME" \

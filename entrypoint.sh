@@ -6,11 +6,11 @@ set -euo pipefail
 : "${HOTKEY:=miner01}"            # miner identity
 : "${BT_NETWORK:=finney}"         # main network
 : "${NETUID:=27}"                 # Subnet-27
-: "${MNEMONIC:=}"                 # 24-word coldkey seed  (required 1st run)
-: "${HOTKEY_MNEMONIC:=}"          # optional hotkey seed
+: "${MNEMONIC:=}"                 # 24-word coldkey seed  – required on first run
+: "${HOTKEY_MNEMONIC:=}"          # optional hotkey seed (usually leave blank)
 
 WALLET_DIR="${HOME}/.bittensor/wallets"
-mkdir -p "$WALLET_DIR"            # avoid directory prompt
+mkdir -p "$WALLET_DIR"            # avoid wallet path prompt
 
 # ─── 2 · Activate venv & cd ─────────────────────────────────────────────────
 source /miner/venv/bin/activate
@@ -46,9 +46,8 @@ if ! btcli wallet info --wallet.name "$WALLET_NAME" \
   fi
 fi
 
-# ─── 5 · Auto-register if not yet on subnet ────────────────────────────────
-if ! btcli subnets list --wallet.name "$WALLET_NAME" \
-        --wallet.hotkey "$HOTKEY" | grep -q "netuid *$NETUID"; then
+# ─── 5 · Register if not yet on subnet ──────────────────────────────────────
+if ! btcli subnets list | grep -q "hotkey.*$HOTKEY.*netuid *$NETUID"; then
   btcli subnets register \
        --subtensor.network "$BT_NETWORK" \
        --netuid            "$NETUID" \

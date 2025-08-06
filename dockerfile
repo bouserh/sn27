@@ -1,43 +1,29 @@
-###############################################################################
-# 1 · Base image (Ubuntu 22.04 + NVIDIA runtime, maintained by Salad)
-###############################################################################
-FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1
+FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1  # CUDA 12, Ubuntu 22.04
 
-###############################################################################
-# 2 · Minimal OS tooling
-###############################################################################
+# ── OS tooling ──────────────────────────────────────────────────────────────
 RUN apt-get update -qq && \
     DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
         python3 python3-venv python3-pip git build-essential curl ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-###############################################################################
-# 3 · Python virtual-env and core libs
-###############################################################################
 WORKDIR /miner
 RUN python3 -m venv venv
 
-# ── Torch CPU wheel (container picks up host GPUs at runtime) ────────────────
+# ── Python deps ─────────────────────────────────────────────────────────────
 RUN . venv/bin/activate && \
+    # torch CPU wheel (GPU picked up at runtime)
     pip install --no-cache-dir \
         --extra-index-url https://download.pytorch.org/whl/cpu \
-        "torch>=2.3,<2.4"
-
-# ── Bittensor core ───────────────────────────────────────────────────────────
-RUN . venv/bin/activate && pip install --no-cache-dir bittensor==9.8.*
-
-###############################################################################
-# 4 · SN-27 neuron + compute backend (ZIP archives → no git clone / no login)
-###############################################################################
-RUN . venv/bin/activate && \
+        "torch>=2.3,<2.4" && \
+    # Bittensor core
+    pip install --no-cache-dir "bittensor>=9.8,<10" && \
+    # SN27 miner + shared compute backend
     pip install --no-cache-dir \
-        "neurons @ https://github.com/neuralinternet/neurons/archive/refs/heads/main.zip" \
-        "compute  @ https://github.com/neuralinternet/compute/archive/refs/heads/main.zip"
+        git+https://github.com/neuralinternet/SN27.git@main \
+        git+https://github.com/neuralinternet/compute.git@main
 
-###############################################################################
-# 5 · Entrypoint script (prompt-free wallet handling)
-###############################################################################
+# ── Entry-point (your prompt-free script) ───────────────────────────────────
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENV PATH="/miner/venv/bin:$PATH"

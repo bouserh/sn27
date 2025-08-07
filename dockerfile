@@ -3,7 +3,7 @@
 ###############################################################################
 FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1 AS builder
 
-# 1 · System dependencies and virtual environment
+# 1 · System dependencies
 RUN apt-get update -qq && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         python3-venv python3-pip \
@@ -11,15 +11,12 @@ RUN apt-get update -qq && \
         ocl-icd-libopencl1 pocl-opencl-icd \
         openssh-client \
         && apt-get clean && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
 
 # 2 · Clone and install NI Compute
 ARG NICOMPUTE_REF=main
 RUN git clone --depth 1 --branch ${NICOMPUTE_REF} \
-        https://github.com/neuralinternet/nicompute.git nicompute
-WORKDIR /app/nicompute
-
-# 3 · Install requirements into a temp directory
+        https://github.com/neuralinternet/nicompute.git /tmp/nicompute
+WORKDIR /tmp/nicompute
 RUN python3 -m venv /tmp/venv && \
     . /tmp/venv/bin/activate && \
     pip install --no-cache-dir --upgrade pip && \
@@ -46,7 +43,7 @@ WORKDIR /app
 # 2 · Create a fresh virtual environment and install packages
 RUN python3 -m venv venv
 ENV PATH="/app/venv/bin:$PATH"
-COPY --from=builder /app/nicompute /app/
+COPY --from=builder /tmp/nicompute /app
 RUN cd /app && \
     pip install --no-cache-dir -r requirements.txt && \
     if [ -f "requirements-compute.txt" ]; then \

@@ -25,6 +25,28 @@ python -c "import sys; print('Python path:', sys.path)"
 echo "📦 Installed packages:"
 pip list | grep -E "(bittensor|nicompute|compute)" || echo "No matching packages found"
 
+# ─── Test compute module import ──────────────────────────────────────────────
+echo "🧪 Testing compute module import..."
+python -c "
+try:
+    import compute
+    print('✅ compute module imported successfully')
+    print('compute module path:', compute.__file__)
+except ImportError as e:
+    print('❌ Failed to import compute:', str(e))
+    
+    # Try to find where compute module might be
+    import os
+    import site
+    print('\\n🔍 Searching for compute module...')
+    site_packages = site.getsitepackages() + [site.getusersitepackages()]
+    for path in site_packages:
+        if os.path.exists(path):
+            for item in os.listdir(path):
+                if 'compute' in item.lower():
+                    print(f'Found: {os.path.join(path, item)}')
+"
+
 # ─── Coldkey setup ───────────────────────────────────────────────────────────
 if ! btcli wallet info --wallet.name "$WALLET_NAME" >/dev/null 2>&1; then
     if [ -n "$MNEMONIC" ]; then
@@ -92,6 +114,33 @@ echo "   Hotkey: $HOTKEY"
 # Check if neurons/miner.py exists
 if [ -f "neurons/miner.py" ]; then
     echo "📂 Found neurons/miner.py"
+    
+    # Test the miner.py imports before running
+    echo "🧪 Testing miner.py imports..."
+    python -c "
+import sys
+sys.path.insert(0, '/app')
+try:
+    # Test the specific import that's failing
+    from compute import (
+        allocation_pb2,
+        allocation_pb2_grpc,
+    )
+    print('✅ Successfully imported compute modules')
+except ImportError as e:
+    print('❌ Import error:', str(e))
+    
+    # List all available modules in site-packages
+    import os
+    venv_packages = '/app/venv/lib/python3.12/site-packages'
+    if os.path.exists(venv_packages):
+        print('\\n📦 Available packages in site-packages:')
+        for item in sorted(os.listdir(venv_packages)):
+            if not item.startswith('.') and not item.endswith('.dist-info'):
+                print(f'  - {item}')
+    exit(1)
+"
+    
     exec python neurons/miner.py \
          --netuid "$NETUID" \
          --wallet.name "$WALLET_NAME" \

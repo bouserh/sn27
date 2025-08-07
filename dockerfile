@@ -3,7 +3,7 @@
 ###############################################################################
 FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1 AS builder
 
-# 1 · System dependencies
+# 1 · System dependencies and virtual environment
 RUN apt-get update -qq && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         python3-venv python3-pip \
@@ -11,20 +11,19 @@ RUN apt-get update -qq && \
         ocl-icd-libopencl1 pocl-opencl-icd \
         openssh-client \
         && apt-get clean && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
-# 2 · Python virtual environment and Bittensor installation
-WORKDIR /tmp/app
-RUN python3 -m venv venv
-ENV PATH="/tmp/app/venv/bin:$PATH"
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir "bittensor>=9.8,<10"
-
-# 3 · Clone and install NI Compute
+# 2 · Clone and install NI Compute
 ARG NICOMPUTE_REF=main
 RUN git clone --depth 1 --branch ${NICOMPUTE_REF} \
         https://github.com/neuralinternet/nicompute.git nicompute
-WORKDIR /tmp/app/nicompute
-RUN pip install --no-cache-dir -r requirements.txt && \
+WORKDIR /app/nicompute
+
+# 3 · Install requirements into a temp directory
+RUN python3 -m venv /tmp/venv && \
+    . /tmp/venv/bin/activate && \
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
     if [ -f "requirements-compute.txt" ]; then \
         pip install --no-cache-dir -r requirements-compute.txt; \
     fi && \
@@ -42,17 +41,22 @@ RUN apt-get update -qq && \
         ocl-icd-libopencl1 pocl-opencl-icd \
         openssh-client \
         && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# 2 · Copy assets from builder stage and local context
 WORKDIR /app
-COPY --from=builder /tmp/app/venv /app/venv
-COPY --from=builder /tmp/app/nicompute /app
+
+# 2 · Create a fresh virtual environment and install packages
+RUN python3 -m venv venv
+ENV PATH="/app/venv/bin:$PATH"
+COPY --from=builder /app/nicompute /app/
+RUN cd /app && \
+    pip install --no-cache-dir -r requirements.txt && \
+    if [ -f "requirements-compute.txt" ]; then \
+        pip install --no-cache-dir -r requirements-compute.txt; \
+    fi && \
+    pip install --no-cache-dir -e .
 COPY entrypoint.sh /entrypoint.sh
 
 # 3 · Setup
 RUN mkdir -p /root/.bittensor/wallets && chmod 755 /app /root/.bittensor/wallets
-# Set PATH to include the virtual environment's bin directory
-ENV PATH="/app/venv/bin:$PATH"
 RUN chmod +x /entrypoint.sh
 
 # 4 · Expose necessary ports

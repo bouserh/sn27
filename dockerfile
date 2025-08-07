@@ -1,81 +1,60 @@
 ###############################################################################
-# Base image: CUDA 12 runtime on Ubuntu 22.04 (Salad official - proven working)
+# Stage 1: Builder
 ###############################################################################
-FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1
+FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1 AS builder
 
-###############################################################################
-# 1 · System dependencies and tools
-###############################################################################
+# 1 · System dependencies
 RUN apt-get update -qq && \
-    DEBIAN_FRONTEND=noninteractive \
-    apt-get install -y --no-install-recommends \
-        python3 python3-venv python3-pip \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        python3-venv python3-pip \
         git build-essential curl ca-certificates \
         ocl-icd-libopencl1 pocl-opencl-icd \
         openssh-client \
-        && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+        && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-###############################################################################
-# 2 · Python virtual environment
-###############################################################################
-WORKDIR /app
+# 2 · Python virtual environment and Bittensor installation
+WORKDIR /tmp/app
 RUN python3 -m venv venv
-ENV PATH="/app/venv/bin:$PATH"
-
-###############################################################################
-# 3 · Install Bittensor first
-###############################################################################
-RUN . venv/bin/activate && \
-    pip install --no-cache-dir --upgrade pip && \
+ENV PATH="/tmp/app/venv/bin:$PATH"
+RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir "bittensor>=9.8,<10"
 
-###############################################################################
-# 4 · Clone and install NI Compute with error handling
-###############################################################################
+# 3 · Clone and install NI Compute
 ARG NICOMPUTE_REF=main
 RUN git clone --depth 1 --branch ${NICOMPUTE_REF} \
-        https://github.com/neuralinternet/nicompute.git /tmp/nicompute && \
-    . venv/bin/activate && \
-    cd /tmp/nicompute && \
-    echo "📁 Repository contents:" && \
-    ls -la && \
-    echo "🔍 Looking for setup files:" && \
-    find . -name "setup.py" -o -name "pyproject.toml" && \
-    echo "📦 Installing main requirements..." && \
-    pip install --no-cache-dir -r requirements.txt && \
-    echo "🔍 Checking for requirements-compute.txt..." && \
+        https://github.com/neuralinternet/nicompute.git nicompute
+WORKDIR /tmp/app/nicompute
+RUN pip install --no-cache-dir -r requirements.txt && \
     if [ -f "requirements-compute.txt" ]; then \
-        echo "📦 Found requirements-compute.txt, installing..." && \
         pip install --no-cache-dir --no-deps -r requirements-compute.txt; \
-    else \
-        echo "⚠️  requirements-compute.txt not found, skipping..."; \
     fi && \
-    echo "📦 Installing package in editable mode..." && \
-    pip install --no-cache-dir -e . && \
-    echo "🔍 Checking installed packages:" && \
-    pip list | grep -E "(compute|nicompute|bittensor)" && \
-    echo "📂 Copying files to /app..." && \
-    cp -r /tmp/nicompute/* /app/ && \
-    rm -rf /tmp/nicompute && \
-    echo "🔍 Final /app contents:" && \
-    cd /app && ls -la
+    pip install --no-cache-dir -e .
 
 ###############################################################################
-# 5 · Setup directories and permissions
+# Stage 2: Final Image
 ###############################################################################
-RUN mkdir -p /root/.bittensor/wallets && \
-    chmod 755 /app
+FROM ghcr.io/saladtechnologies/recipe-base-ubuntu:0.1
 
-###############################################################################
-# 6 · Copy and setup entrypoint
-###############################################################################
-COPY entrypoint.sh /entrypoint.sh
+# 1 · System dependencies for runtime
+RUN apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        python3 python3-venv python3-pip \
+        ocl-icd-libopencl1 pocl-opencl-icd \
+        openssh-client \
+        && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 2 · Copy assets from builder stage
+WORKDIR /app
+COPY --from=builder /tmp/app/venv /app/venv
+COPY --from=builder /tmp/app/nicompute /app
+COPY --from=builder /tmp/app/nicompute/entrypoint.sh /entrypoint.sh
+
+# 3 · Setup
+RUN mkdir -p /root/.bittensor/wallets && chmod 755 /app /root/.bittensor/wallets
+ENV PATH="/app/venv/bin:$PATH"
 RUN chmod +x /entrypoint.sh
 
-###############################################################################
-# 7 · Expose necessary ports
-###############################################################################
+# 4 · Expose necessary ports
 EXPOSE 8091 4444
 
 ENTRYPOINT ["/entrypoint.sh"]

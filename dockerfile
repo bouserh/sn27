@@ -24,10 +24,7 @@ ARG NICOMPUTE_REF=main
 RUN git clone --depth 1 --branch ${NICOMPUTE_REF} \
         https://github.com/neuralinternet/nicompute.git nicompute
 WORKDIR /tmp/app/nicompute
-RUN python3 -m venv /tmp/venv && \
-    . /tmp/venv/bin/activate && \
-    pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
+RUN pip install --no-cache-dir -r requirements.txt && \
     if [ -f "requirements-compute.txt" ]; then \
         pip install --no-cache-dir -r requirements-compute.txt; \
     fi && \
@@ -54,6 +51,7 @@ COPY entrypoint.sh /entrypoint.sh
 
 # 3 · Setup
 RUN mkdir -p /root/.bittensor/wallets && chmod 755 /app /root/.bittensor/wallets
+# Set PATH to include the virtual environment's bin directory
 ENV PATH="/app/venv/bin:$PATH"
 RUN chmod +x /entrypoint.sh
 
